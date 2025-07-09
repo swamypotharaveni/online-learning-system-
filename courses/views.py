@@ -25,7 +25,7 @@ class corsesview(APIView):
         serializer=CourseSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data,status=status.HTTP_200_OK)
+            return Response(serializer.data,status=status.HTTP_201_CREATED)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
     def put(self,request,pk):
         data=request.data.copy()
@@ -36,6 +36,15 @@ class corsesview(APIView):
             serializer.save()
             return Response(serializer.data,status=status.HTTP_200_OK)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+class CourseInstructorDetails(APIView):
+    permission_classes = [IsAuthenticated,IsInstructor]
+    def get(self,request,pk):
+        try:
+            course=Course.objects.get(pk=pk,instructor=request.user)
+            courserializer=CourseSerializer(course)
+            return Response(courserializer.data,status=status.HTTP_200_OK)
+        except Course.DoesNotExist as e:
+            return Response({"error":str(e)},status=status.HTTP_400_BAD_REQUEST)
             
         
 class AllCoursesView(APIView):

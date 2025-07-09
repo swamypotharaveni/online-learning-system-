@@ -31,7 +31,7 @@ class CourseSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
-# serializers.py
+
 
 class CourseListSerializer(serializers.ModelSerializer):
     instructor_name=serializers.CharField(source='instructor.username')
