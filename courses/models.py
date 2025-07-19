@@ -3,6 +3,7 @@ from django.db import models
 # Create your models here.
 from django.contrib.auth.models import User
 from online_learning import settings
+import uuid
 
 class Course(models.Model):
     instructor = models.ForeignKey(
@@ -37,3 +38,49 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.course.title}"
+class CourseEnrollment(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='enrollments'
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='enrollments'
+    )
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00) 
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('user', 'course')
+
+    def __str__(self):
+        return f"{self.user.username} enrolled in {self.course.title}"
+    
+class CoursePayment(models.Model):
+    PAYMENT_STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='payments'
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='payments'
+    )
+    payment_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='PENDING')
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+    payment_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.course.title} - {self.status}"
