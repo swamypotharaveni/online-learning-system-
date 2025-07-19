@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from.models import Course
 from accounts.permissions import IsInstructor
-
+from .models import CourseEnrollment,CoursePayment
 
 class corsesview(APIView):
     permission_classes = [IsAuthenticated,IsInstructor]
@@ -54,3 +54,16 @@ class AllCoursesView(APIView):
         courses = Course.objects.all()
         serializer = CourseListSerializer(courses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+class EnrollFreeCourseView(APIView):
+    permission_classes=[IsAuthenticated,]
+    def post(self,request):
+        try:
+            course=Course.objects.get(id=request.data['course_id'])
+            if course.is_paid:
+                return Response({"details":"this paid course"},status=status.HTTP_400_BAD_REQUEST)
+            enroll,created=CourseEnrollment.objects.get_or_create(user=request.user,course=course)
+            if not created:
+                return Response({"detail": f"You are already enrolled in {course.title}."},status=status.HTTP_400_BAD_REQUEST)
+            return Response({"details":f"Successfully enrolled in {course.title}."},status=status.HTTP_201_CREATED)
+        except Course.DoesNotExist:
+            return Response({"detail": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
