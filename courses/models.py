@@ -76,7 +76,7 @@ class CoursePayment(models.Model):
         on_delete=models.CASCADE,
         related_name='payments'
     )
-    payment_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    payment_id = models.CharField(max_length=100)
     amount = models.DecimalField(max_digits=8, decimal_places=2)
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='PENDING')
     payment_method = models.CharField(max_length=50, blank=True, null=True)

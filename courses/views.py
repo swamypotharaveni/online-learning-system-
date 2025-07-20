@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404, render
+import razorpay.errors
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
@@ -11,6 +12,9 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from.models import Course
 from accounts.permissions import IsInstructor
 from .models import CourseEnrollment,CoursePayment
+import razorpay
+from online_learning import settings
+
 
 class corsesview(APIView):
     permission_classes = [IsAuthenticated,IsInstructor]
@@ -59,6 +63,9 @@ class EnrollFreeCourseView(APIView):
     def post(self,request):
         try:
             course=Course.objects.get(id=request.data['course_id'])
+            if course.instructor ==request.user:
+                 return Response({"details":"You cannot enroll in your own course."},status=status.HTTP_400_BAD_REQUEST)
+                
             if course.is_paid:
                 return Response({"details":"this paid course"},status=status.HTTP_400_BAD_REQUEST)
             enroll,created=CourseEnrollment.objects.get_or_create(user=request.user,course=course)
@@ -67,3 +74,83 @@ class EnrollFreeCourseView(APIView):
             return Response({"details":f"Successfully enrolled in {course.title}."},status=status.HTTP_201_CREATED)
         except Course.DoesNotExist:
             return Response({"detail": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
+
+class CreateRazorpayOrderView(APIView):
+    permission_classes=[IsAuthenticated]
+    def post(self,request):
+        try:
+            course=Course.objects.get(id=request.data["course_id"])
+            if course.instructor == request.user:
+                return Response({"details":"You cannot enroll in your own course."},status=status.HTTP_400_BAD_REQUEST)
+            if not course.is_paid:
+                return Response({"details":"this free course"},status=status.HTTP_400_BAD_REQUEST)
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            order_data={
+                      "amount":int(course.price * 100),
+                        "currency": "INR",
+                        "receipt":  f"order_rcptid_{course.id}_{request.user.id}"}
+            try:
+                order=client.order.create(data=order_data)
+                print(order)
+            except razorpay.errors.BadRequestError as e:
+                return Response({"detail": "Failed to create order", "error": str(e)}, status=400)
+            CoursePayment.objects.create(
+                user=request.user,
+                course=course,
+                amount=course.price,
+                status="PENDING",
+                payment_id=order["id"])
+            return Response({
+                 "order_id":order['id'] ,
+                "amount": course.price,
+                "currency":"INR",
+                "course_id":course.id ,
+                "razorpay_key_id":settings.RAZORPAY_KEY_ID
+                
+            })
+            
+        except Course.DoesNotExist:
+             return Response({"detail": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+
+class VerifyRazorpayPaymentView(APIView):
+    permission_classes = [IsAuthenticated]  # Change to IsAuthenticated for secure apps
+
+    def post(self, request):
+        try:
+            data = request.data
+
+            razorpay_order_id = data.get('razorpay_order_id')
+            razorpay_payment_id = data.get('razorpay_payment_id')
+            razorpay_signature = data.get('razorpay_signature')
+
+            if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature]):
+                return Response({"detail": "Missing payment fields"}, status=400)
+
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+            payment_sign = {
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            }
+
+            client.utility.verify_payment_signature(payment_sign)
+
+            # Fetch payment object
+            payment = CoursePayment.objects.get(payment_id=razorpay_order_id)
+            payment.status = "SUCCESS"
+            payment.payment_method = "Razorpay"
+            payment.save()
+
+            # Enroll user
+            # user = request.user  # change this if AllowAny
+            CourseEnrollment.objects.get_or_create(user=payment.user, course=payment.course)
+
+            return Response({"detail": "Payment verified and enrolled successfully!"}, status=200)
+
+        except razorpay.errors.SignatureVerificationError:
+            return Response({"detail": "Payment verification failed"}, status=400)
+
+        except CoursePayment.DoesNotExist:
+            return Response({"detail": "Payment record not found"}, status=404)

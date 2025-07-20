@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Razorpay Payment</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <button onclick="payNow()">Pay Now</button>
+
+  <script>
+    var bra=`Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUyOTUwMDk5LCJpYXQiOjE3NTI5NDgyOTksImp0aSI6IjllNWQxZTY2ODY0YzQ3OWI5N2JiZTJlMDJjNjg4NTM4IiwidXNlcl9pZCI6NH0.-oA7wYhsTcpF26C4pGBfECn7aSzPmUc083SfojMMHh8`
+    function payNow() {
+      const options = {
+        key: "rzp_test_dcNaa0HT8rrU3a", // Razorpay Key ID from backend
+        amount: 20000, // in paise = ₹200
+        currency: "INR",
+        name: "Your Platform",
+        description: "Course Payment",
+        order_id: "order_Qv2PMyfQXWN8No", // Razorpay order ID from backend
+        handler: function (response) {
+          fetch("http://127.0.0.1:8000/courses/verify-payment/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",}
+              ,
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              course_id: 1
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            alert("✅ Payment Verified: " + JSON.stringify(data));
+          })
+          .catch(err => {
+            alert("❌ Error verifying payment: " + err.message);
+          });
+        }
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+    }
+  </script>
+</body>
+</html>
