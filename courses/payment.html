@@ -13,7 +13,7 @@
     var bra=`Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUyOTUwMDk5LCJpYXQiOjE3NTI5NDgyOTksImp0aSI6IjllNWQxZTY2ODY0YzQ3OWI5N2JiZTJlMDJjNjg4NTM4IiwidXNlcl9pZCI6NH0.-oA7wYhsTcpF26C4pGBfECn7aSzPmUc083SfojMMHh8`
     function payNow() {
       const options = {
-        key: "rzp_test_dcNaa0HT8rrU3a", // Razorpay Key ID from backend
+        key: "", // Razorpay Key ID from backend
         amount: 20000, // in paise = ₹200
         currency: "INR",
         name: "Your Platform",
@@ -34,10 +34,10 @@
           })
           .then(res => res.json())
           .then(data => {
-            alert("✅ Payment Verified: " + JSON.stringify(data));
+            alert(" Payment Verified: " + JSON.stringify(data));
           })
           .catch(err => {
-            alert("❌ Error verifying payment: " + err.message);
+            alert("Error verifying payment: " + err.message);
           });
         }
       };
