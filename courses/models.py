@@ -4,7 +4,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from online_learning import settings
 import uuid
-
+from django.utils import timezone
+from django.db.models.signals import pre_save,post_save
+from django.dispatch import receiver
 class Course(models.Model):
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -84,3 +86,12 @@ class CoursePayment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.course.title} - {self.status}"
+class Notification(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='notifications')
+    message=models.CharField(max_length=100)
+    create_at=models.DateTimeField(auto_now_add=True)
+    type=models.CharField(null=True,blank=True)
+
+
+        
+    

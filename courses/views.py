@@ -143,9 +143,8 @@ class VerifyRazorpayPaymentView(APIView):
             payment.payment_method = "Razorpay"
             payment.save()
 
-            # Enroll user
-            # user = request.user  # change this if AllowAny
-            CourseEnrollment.objects.get_or_create(user=payment.user, course=payment.course)
+
+            CourseEnrollment.objects.get_or_create(user=request.user, course=payment.course)
 
             return Response({"detail": "Payment verified and enrolled successfully!"}, status=200)
 
